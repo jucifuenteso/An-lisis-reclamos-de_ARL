@@ -2,66 +2,88 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 
+# --- CONFIGURACIÓN DE LA PÁGINA ---
+st.set_page_config(
+    page_title="Dashboard Analítico de Quejas",
+    page_icon="⚖️",
+    layout="wide"
+)
 
-#Crear pestañas
-steps=st.tabs(["Start","Dashboard"])
-with steps[0]:
-    
+# --- CARGA Y PROCESAMIENTO DE DATOS ---
+@st.cache_data
+def load_data():
+    try:
+        df = pd.read_csv("BD_Quejas_clasificadas.csv")
+        mapa_meses = {
+            1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+            5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+            9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+        }
+        df['Mes_Num'] = pd.to_numeric(df['Mes'], errors='coerce')
+        df['Mes_Nombre'] = df['Mes_Num'].map(mapa_meses)
+        orden_meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        df['Mes_Nombre'] = pd.Categorical(df['Mes_Nombre'], categories=orden_meses, ordered=True)
+        return df
+    except Exception as e:
+        return pd.DataFrame()
+
+df = load_data()
+
+# --- LÓGICA DE NAVEGACIÓN ---
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = "Start"
+
+def ir_al_dashboard():
+    st.session_state.active_tab = "Dashboard"
+
+opciones = ["Start", "Dashboard"]
+st.radio("Navegación", options=opciones, key="active_tab", horizontal=True, label_visibility="collapsed")
+
+st.markdown("---")
+
+# --- RENDERIZADO DE CONTENIDO ---
+
+if st.session_state.active_tab == "Start":
+    # --- PESTAÑA START (TODO CENTRADO) ---
     st.markdown("""
-        ### Bienvenida al Panel de Control de Calidad y Servicio
-        Este ecosistema de datos ha sido diseñado para transformar los registros de quejas en **decisiones estratégicas**. 
-        A través de este dashboard, podrás monitorear en tiempo real la salud de nuestra operación, identificando:
-        
-        * **Patrones Temporales:** ¿En qué meses estamos recibiendo mayor volumen?
-        * **Focos de Atención:** ¿Qué categorías concentran la mayor insatisfacción?
-        * **Estrategia de Canales:** ¿Por dónde nos contactan más y cómo varía esa participación mes a mes?
-        
-        ---
-        *Utiliza los filtros de la izquierda para segmentar la información por periodo o tipología.*
-    """)
-    
-with steps[1]:
-    
+        <div style="text-align: center; padding: 20px;">
+            <h1 style="font-size: 3em;">🚀 Centro de Control de Calidad</h1>
+            <p style="font-size: 1.2em; color: #555; max-width: 850px; margin: 0 auto;">
+                Este ecosistema de datos ha sido diseñado para transformar los registros de quejas en <b>decisiones estratégicas</b>. 
+                Audita la salud de la operación e identifica patrones de insatisfacción en tiempo real.
+            </p>
+            <div style="display: inline-block; text-align: left; margin-top: 25px;">
+                <p>✅ <b>Patrones Temporales:</b> Análisis de volumen mensual.</p>
+                <p>✅ <b>Focos de Atención:</b> Categorías con mayor insatisfacción.</p>
+                <p>✅ <b>Estrategia de Canales:</b> Participación de medios de contacto.</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # --- CONFIGURACIÓN DE LA PÁGINA ---
-    st.set_page_config(
-        page_title="Dashboard Analítico de Quejas",
-        page_icon="⚖️",
-        layout="wide"
-    )
+    # Centrado del botón mediante columnas
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1.2, 1, 1.2])
+    with c2:
+        st.button("📊 ABRIR DASHBOARD COMPLETO", on_click=ir_al_dashboard, type="primary", use_container_width=True)
 
-    # --- CARGA Y PROCESAMIENTO DE DATOS ---
-    @st.cache_data
-    def load_data():
-        try:
-            df = pd.read_csv("BD_Quejas_clasificadas.csv")
-            
-            # Mapeo de meses
-            mapa_meses = {
-                1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
-                5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
-                9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
-            }
-            
-            df['Mes_Num'] = pd.to_numeric(df['Mes'], errors='coerce')
-            df['Mes_Nombre'] = df['Mes_Num'].map(mapa_meses)
-            
-            orden_meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-            
-            df['Mes_Nombre'] = pd.Categorical(df['Mes_Nombre'], categories=orden_meses, ordered=True)
-            
-            return df
-        except Exception as e:
-            st.error(f"Error al cargar el archivo: {e}")
-            return pd.DataFrame()
-
-    df = load_data()
-
-    # --- LÓGICA DE FILTRADO ---
     if not df.empty:
-        st.sidebar.header("⚙️ Panel de Control")
+        st.markdown("<br><hr>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center;'>Resumen Global Rápido</h3>", unsafe_allow_html=True)
         
+        # --- CAMBIO AQUÍ: Se agregaron 4 columnas para incluir el tipo de queja ---
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Volumen Histórico", f"{len(df):,}")
+        m2.metric("Canal Principal", df['Canal de comunicación'].mode()[0])
+        m3.metric("Mes de Mayor Carga", df['Mes_Nombre'].mode()[0])
+        # Nueva métrica: Categoría más relevante
+        m4.metric("Tipo de Queja Crítico", df['categoria_final'].mode()[0])
+
+else:
+    # --- PESTAÑA DASHBOARD (CÓDIGO ORIGINAL RESTAURADO) ---
+    if not df.empty:
+        # --- LÓGICA DE FILTRADO ---
+        st.sidebar.header("⚙️ Panel de Control")
         meses_disponibles = sorted(df['Mes_Nombre'].unique())
         seleccion_meses = st.sidebar.multiselect("Filtrar por Mes:", options=meses_disponibles, default=meses_disponibles)
         
@@ -90,7 +112,6 @@ with steps[1]:
                 conteo_cats = df_filtrado['categoria_final'].value_counts()
                 cat_top = conteo_cats.idxmax()
                 porcentaje_top = (conteo_cats.max() / total_f) * 100
-                
                 st.markdown(f"""
                     <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; border-left: 5px solid #3B82F6; height: 160px;">
                         <p style="color: #555; margin-bottom: 2px; font-size: 16px; font-weight: bold;">Categoría más frecuente</p>
@@ -121,39 +142,16 @@ with steps[1]:
 
         st.markdown("---")
 
-        # --- FILA 2: PARTICIPACIÓN PORCENTUAL (CORRECCIÓN DEFINITIVA) ---
+        # --- FILA 2: PARTICIPACIÓN PORCENTUAL ---
         st.subheader("⚖️ Participación Porcentual de Canales por Mes")
         if not df_filtrado.empty:
-            # Agrupamos y calculamos el porcentaje manualmente para que no haya errores de etiqueta
             df_part = df_filtrado.groupby(['Mes_Nombre', 'Canal de comunicación'], observed=True).size().reset_index(name='Conteo')
-            
-            # Calculamos el total por mes para sacar el % real
             df_part['Total_Mes'] = df_part.groupby('Mes_Nombre')['Conteo'].transform('sum')
             df_part['Porcentaje'] = (df_part['Conteo'] / df_part['Total_Mes']) * 100
-
-            fig_percent = px.bar(
-                df_part, 
-                x='Mes_Nombre', 
-                y='Porcentaje', # Usamos la columna de porcentaje ya calculada
-                color='Canal de comunicación',
-                text='Porcentaje',
-                template="plotly_white",
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-
-            fig_percent.update_traces(
-                texttemplate='%{text:.1f}%', # Usamos el valor calculado
-                textposition='inside'
-            )
-
-            fig_percent.update_layout(
-                yaxis_title="Participación (%)",
-                xaxis_title="",
-                legend_title="Canal",
-                hovermode="x unified",
-                yaxis=dict(range=[0, 100])
-            )
-            
+            fig_percent = px.bar(df_part, x='Mes_Nombre', y='Porcentaje', color='Canal de comunicación', text='Porcentaje',
+                                template="plotly_white", color_discrete_sequence=px.colors.qualitative.Pastel)
+            fig_percent.update_traces(texttemplate='%{text:.1f}%', textposition='inside')
+            fig_percent.update_layout(yaxis_title="Participación (%)", xaxis_title="", legend_title="Canal", yaxis=dict(range=[0, 100]))
             st.plotly_chart(fig_percent, use_container_width=True)
 
         st.markdown("---")
@@ -170,6 +168,5 @@ with steps[1]:
         with col_c2:
             st.subheader("📋 Resumen de Registros")
             st.dataframe(df_filtrado[['Mes_Nombre', 'categoria_final', 'Canal de comunicación', 'Nombre del cliente']].head(100), use_container_width=True, height=300)
-
     else:
-        st.error("Archivo no encontrado.")
+        st.warning("No hay datos cargados.")
