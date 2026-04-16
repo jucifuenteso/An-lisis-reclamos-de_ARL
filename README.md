@@ -1,6 +1,6 @@
 # Analisis-reclamos-de_ARL
 Análisis reclamos de ARL
-# Librrias usadas
+# Libreias usadas
 pandas
 streamlit
 plotly
